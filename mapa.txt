@@ -1,0 +1,2 @@
+g https://google.com
+y https://youtube.com

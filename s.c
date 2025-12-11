@@ -7,7 +7,7 @@
 typedef struct{
     char* command;
     char* result;
-}cr;
+}cr;//commandresult calc is shjort for calculatro
 typedef struct{
     cr* maparray;
     int length;
@@ -32,9 +32,24 @@ void insertCr(char* str, int start, int end){
     if (sindex <= 0){
         return;
     }
-    printf("%d", sindex);
+    sindex += start;
+    char* command = malloc(sindex-start + 1);
+    char* result = malloc(end-sindex); 
 
-    printf("(%s, %d, %d)\n", s, start, end);
+    command = memcpy(command, str+start, sindex-start);
+    command[sindex-start] = '\0';
+
+    result = memcpy(result, str+sindex, end-sindex);
+    result[end-sindex] = '\0';
+
+    m.length++;
+    m.maparray = realloc(m.maparray, m.length*sizeof(cr));
+    
+    cr new = {command, result};
+    m.maparray[m.length-1] = new;
+
+
+    printf("(%s, %s)\n", command, result);
 }
 
 void updateMapa(){
@@ -82,12 +97,19 @@ char* getCommand(char a[]){
 }
 
 char* translate(char* command){
+    for (int i = 0; i < m.length; i++){
+        if (strcmp(command, m.maparray[i].command) == 0){
+            return m.maparray[i].result;
+        }
+    }
     return "https://google.com";
 }
 
 ////
 
 int main(){
+    m.length = 0;
+
     WSADATA w;
     WSAStartup(MAKEWORD(2,2), &w);
 
@@ -107,6 +129,10 @@ int main(){
         char buf[1024];
         int n = recv(c, buf, sizeof(buf)-1, 0);
         system("cls");
+
+
+
+        m.length = 0;
         updateMapa();
         
 

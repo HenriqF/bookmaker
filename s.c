@@ -16,7 +16,19 @@ mapa m;
 
 // Coisas que modificam mapeamento comando -> link
 
-void insertCr(char* str, int start, int end){
+void saveMapa(){
+    FILE* f = fopen("mapa.txt", "wb");
+    if (!f){
+        return;
+    }
+
+    for (int i = 0 ; i < m.length ; i++){
+        fprintf(f, "%s%s\n",m.maparray[i].command, m.maparray[i].result);
+    }
+    fclose(f);
+}
+
+void insertCr(char* str, int start, int end){ // recebe uma string tipo g site e poe no mapa (se ja tiver la, so atualiza)
     int l = end-start;
     char* s = malloc(l+1);
     s = memcpy(s, str+start, l);
@@ -42,6 +54,14 @@ void insertCr(char* str, int start, int end){
     result = memcpy(result, str+sindex, end-sindex);
     result[end-sindex] = '\0';
 
+    for (int i = 0; i < m.length; i++){
+        if (strcmp(m.maparray[i].command, command) == 0){
+            //printf("(%s)", result);
+            m.maparray[i].result = result;
+            return;
+        }
+    }
+
     m.length++;
     m.maparray = realloc(m.maparray, m.length*sizeof(cr));
     
@@ -49,7 +69,7 @@ void insertCr(char* str, int start, int end){
     m.maparray[m.length-1] = new;
 
 
-    printf("(%s, %s)\n", command, result);
+    //printf("(%s, %s)\n", command, result);
 }
 
 void updateMapa(){
@@ -78,6 +98,23 @@ void updateMapa(){
     insertCr(content, startindex, size);
 
 }
+
+char* newConfigCommand(char* command){
+    for(int i = 2; i < strlen(command); i++){
+        if(command[i] == '/'){
+            command[i] = ' ';
+            insertCr(command, 2, strlen(command));
+            saveMapa();
+            char* crcommand = malloc(i-1);
+            crcommand = memcpy(crcommand, command+2, i-2);
+            crcommand[i-2] = '\0';
+            //printf("%s", crcommand);
+            return crcommand;
+        }
+    }
+    return " ";
+}
+
 
 ////
 
@@ -123,6 +160,10 @@ int main(){
     bind(s, (struct sockaddr*)&address, sizeof(address));
     listen(s, 1);
 
+
+    m.length = 0;
+    updateMapa();
+
     printf("RUN");
     while (1){
         SOCKET c = accept(s, 0, 0);
@@ -130,29 +171,24 @@ int main(){
         int n = recv(c, buf, sizeof(buf)-1, 0);
         system("cls");
 
-
-
-        m.length = 0;
-        updateMapa();
-        
-
-        
+    
         if (n > 0) {
             char* command;
             command = getCommand(buf);
 
-            if (strncmp("c/", command, 2) == 0){
-                printf("sim");
+            char* loc;
+            if (strncmp("c/", command, 2) == 0 && strlen(command)>2){
+                loc = translate(newConfigCommand(command));
             }
             else{
-                char* loc = translate(command);
-                char rbuf[512];
-                int len = 0;
-                len+=sprintf(rbuf, "HTTP/1.1 302 Found\r\nLocation: %s\r\n\r\n", loc);
-
-                const char *respf = rbuf;
-                send(c, respf, len, 0);
+                loc = translate(command);
             }
+            char rbuf[512];
+            int len = 0;
+            len+=sprintf(rbuf, "HTTP/1.1 302 Found\r\nLocation: %s\r\n\r\n", loc);
+
+            const char *respf = rbuf;
+            send(c, respf, len, 0);
            
         }
         closesocket(c);

@@ -10,7 +10,7 @@ typedef struct{
 }cr;//commandresult calc is shjort for calculatro
 typedef struct{
     cr* maparray;
-    int length;
+    size_t length;
 }mapa;
 mapa m;
 
@@ -28,16 +28,13 @@ void saveMapa(){
     fclose(f);
 }
 
-void insertCr(char* str, int start, int end){ // recebe uma string tipo g site e poe no mapa (se ja tiver la, so atualiza)
+void insertCr(char* str, int start, int end){ // recebe uma string tipo 'x site' e poe no mapa (se ja tiver la, so atualiza)
     int l = end-start;
-    char* s = malloc(l+1);
-    s = memcpy(s, str+start, l);
-    s[l] = '\0';
-
+    
     int sindex = -1;
-    for (int i = 0; i < l; i++){
-        if (s[i] == ' '){
-            sindex = i;
+    for (int i = start; i < end; i++){
+        if (str[i] == ' '){
+            sindex = i-start;
             break;
         }
     }
@@ -46,30 +43,34 @@ void insertCr(char* str, int start, int end){ // recebe uma string tipo g site e
     }
     sindex += start;
     char* command = malloc(sindex-start + 1);
-    char* result = malloc(end-sindex); 
+    char* result = malloc(end-sindex + 1); 
 
-    command = memcpy(command, str+start, sindex-start);
+    memcpy(command, str+start, sindex-start);
     command[sindex-start] = '\0';
 
-    result = memcpy(result, str+sindex, end-sindex);
+    memcpy(result, str+sindex, end-sindex);
     result[end-sindex] = '\0';
 
+    
     for (int i = 0; i < m.length; i++){
         if (strcmp(m.maparray[i].command, command) == 0){
-            //printf("(%s)", result);
             m.maparray[i].result = result;
+            free(command);
             return;
         }
     }
 
     m.length++;
-    m.maparray = realloc(m.maparray, m.length*sizeof(cr));
-    
-    cr new = {command, result};
-    m.maparray[m.length-1] = new;
+    cr* temp = realloc(m.maparray, m.length*sizeof(cr));
+    if (!temp){
+        free(command);
+        free(result);
+        return;
+    }
+    m.maparray = temp;
 
-
-    //printf("(%s, %s)\n", command, result);
+    m.maparray[m.length-1].command = command;
+    m.maparray[m.length-1].result = result;
 }
 
 void updateMapa(){
@@ -96,7 +97,7 @@ void updateMapa(){
         }
     }
     insertCr(content, startindex, size);
-
+    free(content);
 }
 
 char* newConfigCommand(char* command){
@@ -146,6 +147,7 @@ char* translate(char* command){
 
 int main(){
     m.length = 0;
+    m.maparray = NULL;
 
     WSADATA w;
     WSAStartup(MAKEWORD(2,2), &w);
@@ -160,8 +162,6 @@ int main(){
     bind(s, (struct sockaddr*)&address, sizeof(address));
     listen(s, 1);
 
-
-    m.length = 0;
     updateMapa();
 
     printf("RUN");
@@ -169,7 +169,6 @@ int main(){
         SOCKET c = accept(s, 0, 0);
         char buf[1024];
         int n = recv(c, buf, sizeof(buf)-1, 0);
-        system("cls");
 
     
         if (n > 0) {

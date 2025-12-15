@@ -30,7 +30,7 @@ void saveMapa(){
 
 void insertCr(char* str, int start, int end){ // recebe uma string tipo 'x site' e poe no mapa (se ja tiver la, so atualiza)
     int l = end-start;
-    
+
     int sindex = -1;
     for (int i = start; i < end; i++){
         if (str[i] == ' '){
@@ -44,6 +44,11 @@ void insertCr(char* str, int start, int end){ // recebe uma string tipo 'x site'
     sindex += start;
     char* command = malloc(sindex-start + 1);
     char* result = malloc(end-sindex + 1); 
+    if (!command || !result){
+        free(command);
+        free(result);
+        return;
+    }
 
     memcpy(command, str+start, sindex-start);
     command[sindex-start] = '\0';
@@ -86,6 +91,10 @@ void updateMapa(){
         size = fread(content, 1, size, f);
         content[size] = '\0';
     }
+    else{
+        fclose(f);
+        return;
+    }
     fclose(f);
 
     int startindex = 0;
@@ -107,9 +116,12 @@ char* newConfigCommand(char* command){
             insertCr(command, 2, strlen(command));
             saveMapa();
             char* crcommand = malloc(i-1);
+            if (!crcommand){
+                return " ";
+            }
+
             crcommand = memcpy(crcommand, command+2, i-2);
             crcommand[i-2] = '\0';
-            //printf("%s", crcommand);
             return crcommand;
         }
     }
@@ -129,6 +141,9 @@ char* getCommand(char a[]){
         length++;
     }
     char* command = malloc(length+1);
+    if (!command){
+        return " ";
+    }
     memcpy(command, a+5, length);
     command[length] = '\0';
     return command;

@@ -1,4 +1,4 @@
-windows
+windows gcc (flag -mwindows pra esconder o consolke)
 ```
 gcc s.c -o s -lws2_32
 ```

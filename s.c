@@ -1,5 +1,7 @@
 #include <winsock2.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 //C:\Windows\System32\drivers\etc\hosts -> 127.0.0.1  [ALIAS]
 #pragma comment(lib, "ws2_32.lib")
@@ -23,12 +25,12 @@ void saveMapa(){
     }
 
     for (int i = 0 ; i < m.length ; i++){
-        fprintf(f, "%s%s\n",m.maparray[i].command, m.maparray[i].result);
+        fprintf(f, "%s %s\n",m.maparray[i].command, m.maparray[i].result);
     }
     fclose(f);
 }
 
-void insertCr(char* str, int start, int end){ // recebe uma string tipo 'x site' e poe no mapa (se ja tiver la, so atualiza)
+void insertCr(char* str, int start, int end){ //poe 'comm resp' no mapa 
     int l = end-start;
 
     int sindex = -1;
@@ -53,12 +55,13 @@ void insertCr(char* str, int start, int end){ // recebe uma string tipo 'x site'
     memcpy(command, str+start, sindex-start);
     command[sindex-start] = '\0';
 
-    memcpy(result, str+sindex, end-sindex);
+    memcpy(result, str+sindex+1, end-sindex);
     result[end-sindex] = '\0';
 
     
     for (int i = 0; i < m.length; i++){
         if (strcmp(m.maparray[i].command, command) == 0){
+            free(m.maparray[i].result);
             m.maparray[i].result = result;
             free(command);
             return;
@@ -100,8 +103,8 @@ void updateMapa(){
     int startindex = 0;
     for(int i = 0; i< size; i++){
         if (content[i] == '\n'){
-            if (content[i-1] == '\r') insertCr(content, startindex, i-1);
-            else insertCr(content, startindex, i);
+            if (content[i-1] == '\r') insertCr(content, startindex, i-2);
+            else insertCr(content, startindex, i-1);
             startindex = i+1;
         }
     }
@@ -110,6 +113,8 @@ void updateMapa(){
 }
 
 char* newConfigCommand(char* command){
+    if (!command) return NULL;
+
     for(int i = 2; i < strlen(command); i++){
         if(command[i] == '/'){
             command[i] = ' ';
@@ -117,7 +122,7 @@ char* newConfigCommand(char* command){
             saveMapa();
             char* crcommand = malloc(i-1);
             if (!crcommand){
-                return " ";
+                return NULL;
             }
 
             crcommand = memcpy(crcommand, command+2, i-2);
@@ -125,7 +130,7 @@ char* newConfigCommand(char* command){
             return crcommand;
         }
     }
-    return " ";
+    return NULL;
 }
 
 
@@ -142,7 +147,7 @@ char* getCommand(char a[]){
     }
     char* command = malloc(length+1);
     if (!command){
-        return " ";
+        return NULL;
     }
     memcpy(command, a+5, length);
     command[length] = '\0';
@@ -150,12 +155,16 @@ char* getCommand(char a[]){
 }
 
 char* translate(char* command){
+    if (!command){
+        return "https://erro";
+    }
+
     for (int i = 0; i < m.length; i++){
         if (strcmp(command, m.maparray[i].command) == 0){
             return m.maparray[i].result;
         }
     }
-    return "https://google.com";
+    return "https://youtube.com";
 }
 
 ////
@@ -177,26 +186,29 @@ int main(){
     bind(s, (struct sockaddr*)&address, sizeof(address));
     listen(s, 1);
 
+    printf("run");
     updateMapa();
-
-    printf("RUN");
     while (1){
         SOCKET c = accept(s, 0, 0);
         char buf[1024];
         int n = recv(c, buf, sizeof(buf)-1, 0);
+        buf[n] = '\0';
 
     
         if (n > 0) {
             char* command;
             command = getCommand(buf);
-
             char* loc;
             if (strncmp("c/", command, 2) == 0 && strlen(command)>2){
                 loc = translate(newConfigCommand(command));
             }
+            else if(strncmp("sair/", command, 2) == 0){
+                return 0;
+            }
             else{
                 loc = translate(command);
             }
+            free(command);
             char rbuf[512];
             int len = 0;
             len+=sprintf(rbuf, "HTTP/1.1 302 Found\r\nLocation: %s\r\n\r\n", loc);
